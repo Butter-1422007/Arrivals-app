@@ -4,78 +4,107 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            python3-pip \
-            build-essential \
-            git \
-            zip \
-            unzip \
+            git zip unzip wget \
             openjdk-17-jdk \
-            autoconf \
-            libtool \
-            pkg-config \
-            zlib1g-dev \
-            libncurses5-dev \
-            libncursesw5-dev \
-            cmake \
-            libffi-dev \
-            libssl-dev
-          pip install buildozer==1.5.0 cython==0.29.33
+            autoconf libtool \
+            pkg-config zlib1g-dev \
+            libncurses5-dev libncursesw5-dev \
+            libltdl-dev libffi-dev libssl-dev \
+            cmake build-essential \
+            python3-pip python3-dev
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install buildozer==1.5.0
+          pip install cython==0.29.33
+
+      - name: Create buildozer.spec if missing
+        run: |
+          if [ ! -f buildozer.spec ]; then
+          cat > buildozer.spec << 'EOF'
+          [app]
+          title = Arrivals
+          package.name = arrivals
+          package.domain = org.arrivals
+          source.dir = .
+          source.include_exts = py,png,jpg,kv,atlas
+          version = 1.0
+          requirements = python3,kivy==2.2.1,plyer,geopy,certifi,urllib3,idna
+          orientation = portrait
+          fullscreen = 0
+          android.permissions = ACCESS_FINE_LOCATION,ACCESS_COARSE_LOCATION,INTERNET,VIBRATE
+          android.api = 33
+          android.minapi = 21
+          android.archs = arm64-v8a
+          android.accept_sdk_license = True
+
+          [buildozer]
+          log_level = 2
+          warn_on_root = 1
+          EOF
+          fi
+          echo "Spec file ready!"
+          cat buildozer.spec
+
+      - name: Check files
+        run: |
+          echo "Files in repo:"
+          ls -la
+          echo "Python version:"
+          python --version
+          echo "Buildozer version:"
+          buildozer --version
 
       - name: Build APK
         run: |
-          buildozer android debug
+          yes | buildozer android debug 2>&1 | tee build.log
+          echo "Build finished"
+
+      - name: Show build result
+        if: always()
+        run: |
+          tail -50 build.log || echo "No build log found"
 
       - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
           name: arrivals-apk
-          path: bin/*.apk
+          path: |
+            bin/*.apk
+            *.apk
+
+      - name: Upload log if failed
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-log
+          path: build.log
 ```
 
----
-
-### Step 5 — Save it
-
-Scroll down → Click **"Commit new file"** green button
+Click **Commit changes** → go to **Actions tab** → wait for the new build to start.
 
 ---
 
-### Step 6 — Upload main.py and buildozer.spec
+## Also check — is your buildozer.spec in the repository?
 
-Now click **"Add file"** → **"Upload files"** → drag and drop just these two files:
-- `main.py`
-- `buildozer.spec`
-
-Click **"Commit changes"**
-
----
-
-### Step 7 — Check Actions tab
-
-Click the **Actions** tab — you should see the build starting automatically with a yellow spinner ⏳
-
----
-
-## Your final repository should look like this
+Go back to your repository main page. You should see these files listed:
 ```
-📁 arrivals-app (repository)
-    📄 main.py
-    📄 buildozer.spec
-    📁 .github
-         📁 workflows
-              📄 build.yml
+📄 main.py
+📄 buildozer.spec
+📁 .github
