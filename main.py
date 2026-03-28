@@ -522,4 +522,60 @@ class ArrivalsApp(App):
         self.alarm_btn.text = "START ALARM"
         self.alarm_btn.set_bg(GREEN)
         self._status_lbl.text = "IDLE"
-        self._sta
+        self._status_lbl.color = GREY
+        self._dist_val.text = "-- m"
+        Animation(opacity=0, duration=0.3).start(self._banner)
+
+    def check_location(self, dt):
+        if not (self.current_coords and
+                self.destination_coords):
+            return
+        try:
+            d = geodesic(
+                self.current_coords,
+                self.destination_coords).meters
+            Clock.schedule_once(
+                lambda dt: self._on_dist(d))
+        except Exception:
+            pass
+
+    def _on_dist(self, d):
+        self._refresh_dist(d)
+        if d <= self.buffer_meters:
+            self._trigger_alarm()
+
+    def _trigger_alarm(self):
+        Clock.unschedule(self.check_location)
+        self.alarm_active = False
+        self.alarm_btn.text = "START ALARM"
+        self.alarm_btn.set_bg(GREEN)
+        self._status_lbl.text = "ARRIVED!"
+        self._status_lbl.color = GREEN
+        self._dist_val.text = "0 m"
+        self._eta_lbl.text = "You are here!"
+
+        self._banner.opacity = 0
+        anim = (Animation(opacity=1.0, duration=0.25) +
+                Animation(opacity=0.5, duration=0.25))
+        anim.repeat = True
+        anim.start(self._banner)
+
+        try:
+            from plyer import notification
+            notification.notify(
+                title="Arrivals",
+                message="Wake up! Almost at your stop!",
+                timeout=15
+            )
+        except Exception:
+            pass
+
+        try:
+            from plyer import vibrator
+            vibrator.vibrate(3)
+        except Exception:
+            pass
+
+
+if __name__ == "__main__":
+    ArrivalsApp().run()
