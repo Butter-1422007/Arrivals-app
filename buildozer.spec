@@ -17,12 +17,3 @@ android.accept_sdk_license = True
 [buildozer]
 log_level = 2
 warn_on_root = 1
-```
-
-**File 3 — Create the GitHub Actions workflow**
-
-On your PC create this folder structure exactly:
-```
-.github
-  └── workflows
-        └── build.yml
